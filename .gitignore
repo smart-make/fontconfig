@@ -39,3 +39,5 @@ src/fcftalias.h
 src/fcftaliastail.h
 fc-lang/fclang.h
 config.h
+src/fcobjshash.gperf
+src/fcobjshash.h
