@@ -52,7 +52,7 @@ typedef int		FcBool;
 
 #define FC_MAJOR	2
 #define FC_MINOR	10
-#define FC_REVISION	91
+#define FC_REVISION	93
 
 #define FC_VERSION	((FC_MAJOR * 10000) + (FC_MINOR * 100) + (FC_REVISION))
 
@@ -185,6 +185,7 @@ typedef int		FcBool;
 #define FC_LCD_LEGACY	    3
 
 typedef enum _FcType {
+    FcTypeUnknown = -1,
     FcTypeVoid,
     FcTypeInteger,
     FcTypeDouble,

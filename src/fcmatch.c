@@ -191,17 +191,26 @@ FcCompareSize (FcValue *value1, FcValue *value2)
 static double
 FcCompareFilename (FcValue *v1, FcValue *v2)
 {
-	const FcChar8 *s1 = FcValueString (v1), *s2 = FcValueString (v2);
-	if (FcStrCmp (s1, s2) == 0)
-	    return 0.0;
-	else if (FcStrCmpIgnoreCase (s1, s2) == 0)
-	    return 1.0;
-	else if (FcStrRegexCmp (s2, s1))
-	    return 2.0;
-	else if (FcStrRegexCmpIgnoreCase (s2, s1))
-	    return 3.0;
-	else
-	    return 4.0;
+    const FcChar8 *s1 = FcValueString (v1), *s2 = FcValueString (v2);
+    if (FcStrCmp (s1, s2) == 0)
+	return 0.0;
+    else if (FcStrCmpIgnoreCase (s1, s2) == 0)
+	return 1.0;
+    else if (FcStrGlobMatch (s1, s2))
+	return 2.0;
+    else
+	return 3.0;
+}
+
+static double
+FcCompareHash (FcValue *v1, FcValue *v2)
+{
+    const FcChar8 *s1 = FcValueString (v1), *s2 = FcValueString (v2);
+
+    /* Do not match an empty string */
+    if (!s1 || !s2 || !s1[0] || !s2[0])
+	return 1.0;
+    return FcCompareString (v1, v2);
 }
 
 #define PRI_NULL(n)				\
@@ -217,6 +226,7 @@ FcCompareFilename (FcValue *v1, FcValue *v2)
 #define PRI_FcCompareCharSet(n)		PRI1(n)
 #define PRI_FcCompareLang(n)		PRI1(n)
 #define PRI_FcComparePostScript(n)	PRI1(n)
+#define PRI_FcCompareHash(n)		PRI1(n)
 
 #define FC_OBJECT(NAME, Type, Cmp)	PRI_##Cmp(NAME)
 
@@ -227,9 +237,10 @@ typedef enum _FcMatcherPriorityDummy {
 #undef FC_OBJECT
 
 #undef PRI1
-#define PRI1(n)			\
-    PRI_ ## n ## _STRONG,	\
-    PRI_ ## n ## _WEAK
+#define PRI1(n)					\
+    PRI_ ## n,					\
+    PRI_ ## n ## _STRONG = PRI_ ## n,		\
+    PRI_ ## n ## _WEAK = PRI_ ## n
 
 typedef enum _FcMatcherPriority {
     PRI1(HASH),
@@ -237,9 +248,8 @@ typedef enum _FcMatcherPriority {
     PRI1(FOUNDRY),
     PRI1(CHARSET),
     PRI_FAMILY_STRONG,
-    PRI_LANG_STRONG,
     PRI_POSTSCRIPT_NAME_STRONG,
-    PRI_LANG_WEAK,
+    PRI1(LANG),
     PRI_FAMILY_WEAK,
     PRI_POSTSCRIPT_NAME_WEAK,
     PRI1(SPACING),
@@ -910,8 +920,7 @@ FcFontSetSort (FcConfig	    *config FC_UNUSED,
 	 * If this node matches any language, go check
 	 * which ones and satisfy those entries
 	 */
-	if (nodeps[f]->score[PRI_LANG_STRONG] < 2000 ||
-	    nodeps[f]->score[PRI_LANG_WEAK] < 2000)
+	if (nodeps[f]->score[PRI_LANG] < 2000)
 	{
 	    for (i = 0; i < nPatternLang; i++)
 	    {
@@ -935,13 +944,6 @@ FcFontSetSort (FcConfig	    *config FC_UNUSED,
 			}
 			patternLangSat[i] = FcTrue;
 			satisfies = FcTrue;
-			/* adjust score to ensure it's not more than 10000.0
-			 * which would means the lang didn't satisfy the requirements
-			 */
-			if (nodeps[f]->score[PRI_LANG_STRONG] > 10000.0)
-			    nodeps[f]->score[PRI_LANG_STRONG] = 10000.0;
-			if (nodeps[f]->score[PRI_LANG_WEAK] > 10000.0)
-			    nodeps[f]->score[PRI_LANG_WEAK] = 10000.0;
 			break;
 		    }
 		}
@@ -949,8 +951,7 @@ FcFontSetSort (FcConfig	    *config FC_UNUSED,
 	}
 	if (!satisfies)
 	{
-	    nodeps[f]->score[PRI_LANG_STRONG] = 10000.0;
-	    nodeps[f]->score[PRI_LANG_WEAK] = 10000.0;
+	    nodeps[f]->score[PRI_LANG] = 10000.0;
 	}
     }
 

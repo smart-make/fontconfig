@@ -190,14 +190,14 @@ FcHashGetSHA256Digest (const FcChar8 *input_strings,
     }
     /* set input size at the end */
     len *= 8;
-    block[63 - 0] =  len        & 0xff;
-    block[63 - 1] = (len >>  8) & 0xff;
-    block[63 - 2] = (len >> 16) & 0xff;
-    block[63 - 3] = (len >> 24) & 0xff;
-    block[63 - 4] = (len >> 32) & 0xff;
-    block[63 - 5] = (len >> 40) & 0xff;
-    block[63 - 6] = (len >> 48) & 0xff;
-    block[63 - 7] = (len >> 56) & 0xff;
+    block[63 - 0] =  (uint64_t)len        & 0xff;
+    block[63 - 1] = ((uint64_t)len >>  8) & 0xff;
+    block[63 - 2] = ((uint64_t)len >> 16) & 0xff;
+    block[63 - 3] = ((uint64_t)len >> 24) & 0xff;
+    block[63 - 4] = ((uint64_t)len >> 32) & 0xff;
+    block[63 - 5] = ((uint64_t)len >> 40) & 0xff;
+    block[63 - 6] = ((uint64_t)len >> 48) & 0xff;
+    block[63 - 7] = ((uint64_t)len >> 56) & 0xff;
     FcHashComputeSHA256Digest (ret, block);
 
     return FcHashSHA256ToString (ret);
@@ -220,13 +220,13 @@ FcHashGetSHA256DigestFromFile (const FcChar8 *filename)
 
     ret = FcHashInitSHA256Digest ();
     if (!ret)
-	return NULL;
+	goto bail0;
 
     while (!feof (fp))
     {
 	if ((len = fread (ibuf, sizeof (char), 64, fp)) < 64)
 	{
-	    long v;
+	    uint64_t v;
 
 	    /* add a padding */
 	    memset (&ibuf[len], 0, 64 - len);
@@ -261,5 +261,60 @@ FcHashGetSHA256DigestFromFile (const FcChar8 *filename)
 
 bail0:
     fclose (fp);
+
     return NULL;
+}
+
+FcChar8 *
+FcHashGetSHA256DigestFromMemory (const char *fontdata,
+				 size_t      length)
+{
+    char ibuf[64];
+    FcChar32 *ret;
+    size_t i = 0;
+
+    ret = FcHashInitSHA256Digest ();
+    if (!ret)
+	return NULL;
+
+    while (i <= length)
+    {
+	if ((length - i) < 64)
+	{
+	    uint64_t v;
+	    size_t n;
+
+	    /* add a padding */
+	    n = length - i;
+	    if (n > 0)
+		memcpy (ibuf, &fontdata[i], n);
+	    memset (&ibuf[n], 0, 64 - n);
+	    ibuf[n] = 0x80;
+	    if ((64 - n) < 9)
+	    {
+		/* process a block once */
+		FcHashComputeSHA256Digest (ret, ibuf);
+		memset (ibuf, 0, 64);
+	    }
+	    /* set input size at the end */
+	    v = length * 8;
+	    ibuf[63 - 0] =  v        & 0xff;
+	    ibuf[63 - 1] = (v >>  8) & 0xff;
+	    ibuf[63 - 2] = (v >> 16) & 0xff;
+	    ibuf[63 - 3] = (v >> 24) & 0xff;
+	    ibuf[63 - 4] = (v >> 32) & 0xff;
+	    ibuf[63 - 5] = (v >> 40) & 0xff;
+	    ibuf[63 - 6] = (v >> 48) & 0xff;
+	    ibuf[63 - 7] = (v >> 56) & 0xff;
+	    FcHashComputeSHA256Digest (ret, ibuf);
+	    break;
+	}
+	else
+	{
+	    FcHashComputeSHA256Digest (ret, &fontdata[i]);
+	}
+	i += 64;
+    }
+
+    return FcHashSHA256ToString (ret);
 }
