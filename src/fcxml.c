@@ -1322,10 +1322,14 @@ FcStrtod (char *s, char **end)
      * Have to swap the decimal point to match the current locale
      * if that locale doesn't use 0x2e
      */
+#if defined(__ANDROID__)
+    // TODO: local support on Android (by duzy)
+#else
     if ((dot = strchr (s, 0x2e)) &&
 	(locale_data = localeconv ()) &&
 	(locale_data->decimal_point[0] != 0x2e ||
-	 locale_data->decimal_point[1] != 0))
+	 locale_data->decimal_point[1] != 0)
+	)
     {
 	char	buf[128];
 	int	slen = strlen (s);
@@ -1358,6 +1362,7 @@ FcStrtod (char *s, char **end)
 	}
     }
     else
+#endif
 	v = strtod (s, end);
     return v;
 }
