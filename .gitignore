@@ -41,3 +41,6 @@ fc-lang/fclang.h
 config.h
 src/fcobjshash.gperf
 src/fcobjshash.h
+/fc-case/fc-case
+/fc-glyphname/fc-glyphname
+/fc-lang/fc-lang
